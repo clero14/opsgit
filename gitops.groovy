@@ -32,23 +32,34 @@ class GitOpsOrchestrator {
         
         def jsonSlurper = new JsonSlurper()
         config = jsonSlurper.parse(file)
-        println "Configuration loaded: ${config.deploymentRepo}"
+        
+        // Set default values for compose and env files if not specified
+        if (!config.composeFile) {
+            config.composeFile = "compose.yml"
+        }
+        if (!config.envFile) {
+            config.envFile = ".env"
+        }
+        
+        // Support both old "deploymentRepo" and new "targetDir" for backward compatibility
+        if (!config.targetDir && config.deploymentRepo) {
+            config.targetDir = config.deploymentRepo
+        }
+        
+        println "Configuration loaded: ${config.targetDir}"
     }
     
     def createDefaultConfig(String configFile) {
         def defaultConfig = """
 {
-    "deploymentRepo": "/path/to/deployment-repo",
-    "composeFile": "compose.yml",
-    "envFile": ".env",
-    "services": []
+    "targetDir": "/path/to/deployment-repo"
 }
 """
         new File(configFile).text = defaultConfig
     }
     
     def loadPreviousChecksums() {
-        def file = new File(config.deploymentRepo, checksumFile)
+        def file = new File(config.targetDir, checksumFile)
         if (file.exists()) {
             def jsonSlurper = new JsonSlurper()
             previousChecksums = jsonSlurper.parse(file)
@@ -60,7 +71,7 @@ class GitOpsOrchestrator {
     }
     
     def savePreviousChecksums() {
-        def file = new File(config.deploymentRepo, checksumFile)
+        def file = new File(config.targetDir, checksumFile)
         def json = groovy.json.JsonOutput.toJson(previousChecksums)
         file.text = groovy.json.JsonOutput.prettyPrint(json)
         println "Checksums saved"
@@ -98,10 +109,10 @@ class GitOpsOrchestrator {
     
     def gitPull() {
         println "\n==> Pulling latest changes from git..."
-        def repoDir = new File(config.deploymentRepo)
+        def repoDir = new File(config.targetDir)
         
         if (!repoDir.exists()) {
-            println "ERROR: Deployment repository not found: ${config.deploymentRepo}"
+            println "ERROR: Target directory not found: ${config.targetDir}"
             return false
         }
         
@@ -121,7 +132,7 @@ class GitOpsOrchestrator {
             serviceUpdates: []
         ]
         
-        def repoDir = new File(config.deploymentRepo)
+        def repoDir = new File(config.targetDir)
         
         // Check compose file
         def composeFile = new File(repoDir, config.composeFile)
@@ -149,24 +160,25 @@ class GitOpsOrchestrator {
         previousChecksums.compose = composeChecksum
         previousChecksums.env = envChecksum
         
-        // Check individual service directories
-        if (config.services) {
-            config.services.each { serviceName ->
-                def serviceDir = new File(repoDir, serviceName)
-                if (serviceDir.exists() && serviceDir.isDirectory()) {
-                    def serviceChecksum = calculateDirectoryChecksum(serviceDir)
-                    def previousServiceChecksum = previousChecksums["service_${serviceName}"] ?: null
-                    
-                    println "Service ${serviceName} checksum: ${serviceChecksum}"
-                    println "Previous ${serviceName} checksum: ${previousServiceChecksum}"
-                    
-                    if (serviceChecksum != previousServiceChecksum) {
-                        println "Service ${serviceName} changed"
-                        changes.serviceUpdates << serviceName
-                    }
-                    
-                    previousChecksums["service_${serviceName}"] = serviceChecksum
+        // Auto-detect service directories (subdirectories in targetDir)
+        // Skip common non-service directories
+        def excludedDirs = ['.git', '.gitignore', 'node_modules', 'vendor', '.github']
+        repoDir.listFiles()?.each { file ->
+            if (file.isDirectory() && !excludedDirs.contains(file.name) && !file.name.startsWith('.')) {
+                def serviceName = file.name
+                def serviceDir = file
+                def serviceChecksum = calculateDirectoryChecksum(serviceDir)
+                def previousServiceChecksum = previousChecksums["service_${serviceName}"] ?: null
+                
+                println "Service ${serviceName} checksum: ${serviceChecksum}"
+                println "Previous ${serviceName} checksum: ${previousServiceChecksum}"
+                
+                if (serviceChecksum != previousServiceChecksum) {
+                    println "Service ${serviceName} changed"
+                    changes.serviceUpdates << serviceName
                 }
+                
+                previousChecksums["service_${serviceName}"] = serviceChecksum
             }
         }
         
@@ -175,7 +187,7 @@ class GitOpsOrchestrator {
     
     def triggerUpdates(changes) {
         println "\n==> Triggering updates..."
-        def repoDir = new File(config.deploymentRepo)
+        def repoDir = new File(config.targetDir)
         
         if (changes.fullUpdate) {
             println "Executing full update: make gitopsAll"
@@ -212,10 +224,9 @@ class GitOpsOrchestrator {
         println "========================================"
         println "GitOps Orchestration Starting"
         println "========================================"
-        println "Target Repository: ${config.deploymentRepo}"
+        println "Target Directory: ${config.targetDir}"
         println "Compose File: ${config.composeFile}"
         println "Env File: ${config.envFile}"
-        println "Services: ${config.services}"
         println "========================================"
         
         // Step 1: Git pull

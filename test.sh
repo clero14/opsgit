@@ -98,10 +98,7 @@ git commit -m "Initial infrastructure"
 echo "Creating test configuration..."
 cat > "$TEST_DIR/test-config.json" << EOF
 {
-    "deploymentRepo": "$DEPLOYMENT_REPO",
-    "composeFile": "compose.yml",
-    "envFile": ".env",
-    "services": ["web"]
+    "targetDir": "$DEPLOYMENT_REPO"
 }
 EOF
 
