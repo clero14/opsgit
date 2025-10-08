@@ -57,19 +57,17 @@ Create or edit `gitops-config.json`:
 
 ```json
 {
-    "deploymentRepo": "/path/to/deployment-repo",
-    "composeFile": "compose.yml",
-    "envFile": ".env",
-    "services": ["logstash", "elasticsearch", "kibana"]
+    "targetDir": "/path/to/deployment-repo"
 }
 ```
 
 ### Configuration Options
 
-- `deploymentRepo`: Path to the git repository containing your docker-compose configuration
-- `composeFile`: Name of the docker-compose file (default: `compose.yml`)
-- `envFile`: Name of the environment file (default: `.env`)
-- `services`: Array of service names that have additional configuration directories
+- `targetDir`: Path to the directory containing your docker-compose configuration (the deployment repository root)
+- `composeFile`: (Optional) Name of the docker-compose file (default: `compose.yml`)
+- `envFile`: (Optional) Name of the environment file (default: `.env`)
+
+**Note:** The orchestrator now automatically detects services by scanning subdirectories in the targetDir. You no longer need to specify a services list!
 
 ## Deployment Repository Structure
 
@@ -79,6 +77,7 @@ Your deployment repository should follow this structure:
 deployment-repo/
 ├── compose.yml          # Docker Compose configuration
 ├── .env                 # Environment variables
+├── Makefile            # Make targets for gitops updates (gitopsAll, gitops<Service>)
 ├── logstash/           # Service-specific configuration directory
 │   ├── pipeline/
 │   │   └── logstash.conf
@@ -88,22 +87,27 @@ deployment-repo/
 └── kibana/            # Another service directory (optional)
 ```
 
+**Important:** The Makefile must be in your deployment repository, not in the orchestrator. See `examples/deployment-repo/Makefile` for a reference implementation.
+
 ### Service Configuration
 
-Services with additional configuration files should have a directory with the same name as the service. For example:
+Services with additional configuration files should have a directory with the same name as the service. The orchestrator will automatically detect these directories and monitor them for changes. For example:
 - Service name: `logstash`
 - Configuration directory: `logstash/`
+- Make target: `gitopsLogstash` (defined in your deployment repo's Makefile)
 
 ## Makefile Targets
 
-The `Makefile` defines how updates are performed:
+Your deployment repository must include a `Makefile` that defines how updates are performed:
 
 - `make gitopsAll` - Full update of all services (stops, pulls, restarts everything)
 - `make gitopsLogstash` - Update only the Logstash service
 - `make gitopsElasticsearch` - Update only the Elasticsearch service
 - `make gitopsKibana` - Update only the Kibana service
 
-You can customize these targets or add new ones for your specific services.
+You can customize these targets or add new ones for your specific services. See `examples/deployment-repo/Makefile` for a complete example.
+
+**Target Naming Convention:** For a service directory named `myservice`, create a make target named `gitopsMyservice` (capitalize the first letter).
 
 ## Usage
 
@@ -175,25 +179,27 @@ Or use a systemd timer for more robust scheduling.
 See the `examples/deployment-repo/` directory for sample configuration files:
 - `compose.yml` - Example Docker Compose file with ELK stack
 - `.env` - Example environment variables
+- `Makefile` - Example Makefile with gitops targets
 - `logstash/` - Example service configuration directory
 
 ## Troubleshooting
 
 ### Script doesn't detect changes
 
-- Check that the deployment repository path is correct in `gitops-config.json`
-- Verify that `.gitops_checksums.json` exists in the deployment repository
+- Check that the target directory path is correct in `gitops-config.json`
+- Verify that `.gitops_checksums.json` exists in the target directory
 - Run with verbose output to see checksum calculations
 
 ### Make targets fail
 
 - Ensure Docker and Docker Compose are installed and running
-- Check that you're in the correct directory (deployment repository)
+- Ensure your deployment repository has a Makefile with the appropriate targets
 - Verify that docker-compose.yml syntax is valid
+- Check that the make target names match the convention (gitops + capitalized service name)
 
 ### Permission issues
 
-- Ensure the script has read/write access to the deployment repository
+- Ensure the script has read/write access to the target directory
 - Check that the user running the script can execute docker commands
 
 ## Contributing

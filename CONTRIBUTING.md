@@ -58,7 +58,12 @@ git init
 # Add compose.yml, .env, etc.
 ```
 
-2. Update `gitops-config.json` to point to your test repo
+2. Update `gitops-config.json` to point to your test repo:
+   ```json
+   {
+       "targetDir": "/tmp/test-repo"
+   }
+   ```
 
 3. Run the orchestrator:
 ```bash
@@ -94,7 +99,7 @@ groovy gitops.groovy
 opsgit/
 ├── gitops.groovy           # Main orchestration script
 ├── gitops-config.json      # Configuration file
-├── Makefile                # Docker Compose update targets
+├── Makefile                # Development commands (test, validate, demo)
 ├── README.md               # Main documentation
 ├── QUICKSTART.md           # Getting started guide
 ├── ARCHITECTURE.md         # Technical documentation
@@ -105,16 +110,22 @@ opsgit/
 ├── test.sh                # Integration tests
 ├── demo.sh                # Demo script
 └── examples/              # Example files
-    └── deployment-repo/
+    └── deployment-repo/   # Example deployment repository
+        ├── compose.yml    # Example docker-compose file
+        ├── .env          # Example environment variables
+        ├── Makefile      # Example gitops Makefile (must be in deployment repo)
+        └── logstash/     # Example service directory
 ```
+
+**Note:** The Makefile with gitops targets (gitopsAll, gitops<Service>) must be in your deployment repository, not in the orchestrator repository.
 
 ## Adding New Features
 
 ### Adding a New Configuration Option
 
 1. Update `gitops-config.json` with the new option
-2. Update the `loadConfig()` method in `gitops.groovy`
-3. Document the new option in README.md
+2. Update the `loadConfig()` method in `gitops.groovy` to handle the new option
+3. Document the new option in README.md and ARCHITECTURE.md
 4. Add validation in `validate.sh` if needed
 
 ### Adding a New Change Detection Method
@@ -126,10 +137,30 @@ opsgit/
 
 ### Adding Support for New Services
 
-1. Add service to `examples/deployment-repo/compose.yml`
-2. Add make target to `Makefile`
-3. Add service to default config in `gitops.groovy`
-4. Update documentation
+Services are now auto-detected! To add support for a new service:
+
+1. Add service to your deployment repository's `compose.yml`
+2. Create service directory in your deployment repository (if needed)
+3. Add make target to your deployment repository's `Makefile`
+4. No changes needed in the orchestrator - it will automatically detect the new service
+
+Example: Adding a Redis service
+1. In your deployment repo's compose.yml, add:
+   ```yaml
+   redis:
+     image: redis:latest
+     ports:
+       - "6379:6379"
+   ```
+2. Create `redis/` directory with config (optional)
+3. In your deployment repo's Makefile, add:
+   ```makefile
+   gitopsRedis:
+       docker-compose stop redis
+       docker-compose rm -f redis
+       docker-compose pull redis
+       docker-compose up -d redis
+   ```
 
 ## Testing Guidelines
 

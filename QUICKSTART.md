@@ -65,23 +65,34 @@ Edit `gitops-config.json` in the opsgit directory:
 
 ```json
 {
-    "deploymentRepo": "/path/to/deployment-repo",
-    "composeFile": "compose.yml",
-    "envFile": ".env",
-    "services": ["myapp"]
+    "targetDir": "/path/to/deployment-repo"
 }
 ```
 
+**Note:** Services are now auto-detected! No need to list them in the configuration.
+
 ### 3. Set Up Makefile in Deployment Repository
 
-Copy the provided Makefile to your deployment repository and customize it:
+Your deployment repository needs a Makefile with gitops targets. You can use the example as a starting point:
 
 ```bash
-cp /path/to/opsgit/Makefile /path/to/deployment-repo/
-cd /path/to/deployment-repo
+# Copy the example Makefile
+cp /path/to/opsgit/examples/deployment-repo/Makefile /path/to/deployment-repo/
 
 # Edit Makefile to match your services
-# Add/modify targets like gitopsMyapp
+cd /path/to/deployment-repo
+nano Makefile
+```
+
+Add targets for your services following the naming convention `gitops<ServiceName>`:
+
+```makefile
+gitopsMyapp:
+    @echo "==> Updating Myapp service..."
+    docker-compose stop myapp
+    docker-compose rm -f myapp
+    docker-compose pull myapp
+    docker-compose up -d myapp
 ```
 
 ### 4. Run Initial Orchestration
@@ -92,9 +103,9 @@ groovy gitops.groovy
 ```
 
 This first run will:
-- Pull latest changes (if any)
-- Calculate initial checksums
-- Save checksums to `.gitops_checksums.json` in your deployment repo
+- Pull latest changes from git (if the target directory is a git repository)
+- Calculate initial checksums for compose.yml, .env, and any service directories
+- Save checksums to `.gitops_checksums.json` in your target directory
 - Trigger updates if changes are detected
 
 ### 5. Test Change Detection
@@ -202,8 +213,8 @@ make gitopsAll     # Actual run
 
 ## Next Steps
 
-- Customize the Makefile for your specific services
-- Add more services to `gitops-config.json`
+- Customize the Makefile in your deployment repository for your specific services
+- The orchestrator will automatically detect any service directories you add
 - Set up monitoring and alerting for the orchestration runs
 - Review logs regularly to ensure smooth operation
 
