@@ -1,0 +1,6 @@
+{
+    "deploymentRepo": "/path/to/deployment-repo",
+    "composeFile": "compose.yml",
+    "envFile": ".env",
+    "services": ["logstash", "elasticsearch", "kibana"]
+}
