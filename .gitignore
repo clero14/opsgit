@@ -1,0 +1,22 @@
+# Ignore checksum files
+.gitops_checksums.json
+
+# Ignore example deployment repo git directory
+examples/deployment-repo/.git/
+
+# Ignore log files
+*.log
+
+# Ignore temporary files
+*.tmp
+*.swp
+*~
+
+# Ignore IDE files
+.idea/
+.vscode/
+*.iml
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
