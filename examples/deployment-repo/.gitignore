@@ -1,0 +1,17 @@
+# GitOps generated files
+.gitops_checksums.json
+
+# Docker volumes and data
+data/
+volumes/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/

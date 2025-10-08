@@ -1,62 +1,29 @@
-# Makefile for GitOps orchestration
-# This file defines how to handle updates for docker-compose services
+# Makefile for GitOps Orchestrator Development
+# This file is for developing the orchestrator itself
+# Your deployment repository needs its own Makefile (see examples/deployment-repo/Makefile)
 
-.PHONY: help gitopsAll gitopsLogstash gitopsElasticsearch gitopsKibana
+.PHONY: help test validate demo
 
 help:
-	@echo "GitOps Makefile - Docker Compose Orchestration"
+	@echo "GitOps Orchestrator - Development Commands"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  gitopsAll          - Full update of all services"
-	@echo "  gitopsLogstash     - Update Logstash service"
-	@echo "  gitopsElasticsearch - Update Elasticsearch service"
-	@echo "  gitopsKibana       - Update Kibana service"
+	@echo "  test       - Run integration tests"
+	@echo "  validate   - Validate the configuration and setup"
+	@echo "  demo       - Run a quick demo"
 	@echo ""
-	@echo "Usage: make <target>"
+	@echo "Note: Your deployment repository needs its own Makefile"
+	@echo "      See examples/deployment-repo/Makefile for reference"
 
-# Full update - restart all services with new configuration
-gitopsAll:
-	@echo "==> Performing full GitOps update..."
-	@echo "==> Stopping all services..."
-	docker-compose down
-	@echo "==> Pulling latest images..."
-	docker-compose pull
-	@echo "==> Starting all services..."
-	docker-compose up -d
-	@echo "==> Full update completed"
+test:
+	@echo "Running integration tests..."
+	./test.sh
 
-# Update Logstash service specifically
-gitopsLogstash:
-	@echo "==> Updating Logstash service..."
-	@echo "==> Stopping Logstash..."
-	docker-compose stop logstash
-	docker-compose rm -f logstash
-	@echo "==> Pulling latest Logstash image..."
-	docker-compose pull logstash
-	@echo "==> Starting Logstash..."
-	docker-compose up -d logstash
-	@echo "==> Logstash update completed"
+validate:
+	@echo "Validating setup..."
+	./validate.sh
 
-# Update Elasticsearch service specifically
-gitopsElasticsearch:
-	@echo "==> Updating Elasticsearch service..."
-	@echo "==> Stopping Elasticsearch..."
-	docker-compose stop elasticsearch
-	docker-compose rm -f elasticsearch
-	@echo "==> Pulling latest Elasticsearch image..."
-	docker-compose pull elasticsearch
-	@echo "==> Starting Elasticsearch..."
-	docker-compose up -d elasticsearch
-	@echo "==> Elasticsearch update completed"
+demo:
+	@echo "Running demo..."
+	./demo.sh
 
-# Update Kibana service specifically
-gitopsKibana:
-	@echo "==> Updating Kibana service..."
-	@echo "==> Stopping Kibana..."
-	docker-compose stop kibana
-	docker-compose rm -f kibana
-	@echo "==> Pulling latest Kibana image..."
-	docker-compose pull kibana
-	@echo "==> Starting Kibana..."
-	docker-compose up -d kibana
-	@echo "==> Kibana update completed"

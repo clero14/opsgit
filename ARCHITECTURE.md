@@ -24,21 +24,25 @@ The main orchestration script written in Groovy.
 
 ### 2. gitops-config.json
 Configuration file that specifies:
-- `deploymentRepo`: Path to the git repository being monitored
-- `composeFile`: Name of the docker-compose file
-- `envFile`: Name of the environment variables file
-- `services`: Array of service names with additional configuration
+- `targetDir`: Path to the directory containing your docker-compose configuration
+- `composeFile`: (Optional) Name of the docker-compose file (default: `compose.yml`)
+- `envFile`: (Optional) Name of the environment file (default: `.env`)
+
+**Note:** Services are now auto-detected by scanning subdirectories in targetDir. No services list needed!
 
 ### 3. Makefile
 Defines how to perform updates:
 - `gitopsAll`: Full stack update (all services)
 - `gitops<ServiceName>`: Individual service updates
 
+**Important:** The Makefile must be located in your target directory (deployment repository), not in the orchestrator repository.
+
 ### 4. Deployment Repository Structure
 ```
 deployment-repo/
 ├── compose.yml           # Main compose file
 ├── .env                  # Environment variables
+├── Makefile             # Make targets for gitops operations
 ├── .gitops_checksums.json  # Auto-generated checksums
 └── <service-name>/       # Service-specific configs
     └── config files...
@@ -49,7 +53,7 @@ deployment-repo/
 ### Step 1: Git Pull
 ```
 gitPull()
-    └── Executes: git pull in deployment repo
+    └── Executes: git pull in target directory
 ```
 
 ### Step 2: Identify Changes
@@ -57,6 +61,7 @@ gitPull()
 identifyChanges()
     ├── Calculate compose.yml checksum
     ├── Calculate .env checksum
+    ├── Auto-detect service directories (subdirectories in targetDir)
     ├── Calculate service directory checksums
     ├── Compare with previous checksums
     └── Determine:
@@ -153,18 +158,18 @@ make gitops<Service>
 
 For a service with additional configuration:
 1. Service name in compose.yml: `logstash`
-2. Configuration directory: `logstash/`
-3. Make target: `gitopsLogstash`
-4. Config entry: `"services": ["logstash"]`
+2. Configuration directory: `logstash/` (in your target directory)
+3. Make target: `gitopsLogstash` (defined in your target directory's Makefile)
+4. The orchestrator will auto-detect the `logstash/` directory
 
 ### Adding a New Service
 
-1. Add service to compose.yml
-2. Create service directory (if needed)
-3. Add service to gitops-config.json services array
-4. Add make target to Makefile
+1. Add service to compose.yml in your deployment repository
+2. Create service directory (if needed) in your deployment repository
+3. Add make target to Makefile in your deployment repository
+4. No need to update gitops-config.json - services are auto-detected!
 
-Example:
+Example Makefile target:
 ```makefile
 gitopsRedis:
     @echo "==> Updating Redis service..."
@@ -193,9 +198,9 @@ gitopsRedis:
 
 ## Security Considerations
 
-1. **File System Access**: Script needs read/write access to deployment repo
+1. **File System Access**: Script needs read/write access to target directory
 2. **Docker Access**: User must have docker/docker-compose permissions
-3. **Git Credentials**: Must be configured for the deployment repository
+3. **Git Credentials**: Must be configured for the target directory (if it's a git repository)
 4. **State File**: `.gitops_checksums.json` should not be in git (gitignored)
 
 ## Performance
@@ -321,4 +326,4 @@ Potential improvements:
 7. Blue-green deployments
 8. Canary releases
 9. Integration with CI/CD systems
-10. Support for multiple deployment repositories
+10. Support for multiple target directories
